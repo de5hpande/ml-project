@@ -1,59 +1,46 @@
-import streamlit as st
+from flask import Flask , request,render_template
+import numpy as np
 import pandas as pd
-import pickle
 
-# Load the trained model and preprocessor
-with open('artifacts/model.pkl', 'rb') as model_file:
-    model = pickle.load(model_file)
+from sklearn.preprocessing import StandardScaler
+from src.pipeline.predict_pipeline import CustomData,PredictPipeline
+application=Flask(__name__)
 
-with open('artifacts/preprocessor.pkl', 'rb') as preprocessor_file:
-    preprocessor = pickle.load(preprocessor_file)
+app=application
 
-# App Title
-st.title("Math Score Predictor")
+## Route for a home page
 
-# Input fields for user data
-st.header("Enter Student Details")
-gender = st.selectbox("Gender", ["male", "female"])
-race_ethnicity = st.selectbox(
-    "Race/Ethnicity", ["group A", "group B", "group C", "group D", "group E"]
-)
-parental_education = st.selectbox(
-    "Parental Level of Education",
-    [
-        "some high school",
-        "high school",
-        "some college",
-        "associate's degree",
-        "bachelor's degree",
-        "master's degree",
-    ],
-)
-lunch = st.selectbox("Lunch", ["standard", "free/reduced"])
-test_preparation = st.selectbox(
-    "Test Preparation Course", ["none", "completed"]
-)
-reading_score = st.number_input("Reading Score", min_value=0, max_value=100, step=1)
-writing_score = st.number_input("Writing Score", min_value=0, max_value=100, step=1)
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-# Prediction Button
-if st.button("Predict Math Score"):
-    # Create a DataFrame for prediction
-    input_data = pd.DataFrame(
-        {
-            "gender": [gender],
-            "race_ethnicity": [race_ethnicity],
-            "parental_level_of_education": [parental_education],
-            "lunch": [lunch],
-            "test_preparation_course": [test_preparation],
-            "reading_score": [reading_score],
-            "writing_score": [writing_score],
-        }
-    )
+@app.route('/predictdata',methods=['GET','POST'])
+def predict_datapoint():
+    if request.method=='GET':
+        return render_template('home.html')
+    else:
+        data=CustomData(
+            gender=request.form.get('gender'),
+            race_ethnicity=request.form.get('ethnicity'),
+            parental_level_of_education=request.form.get('parental_level_of_education'),
+            lunch=request.form.get('lunch'),
+            test_preparation_course=request.form.get('test_preparation_course'),
+            reading_score=float(request.form.get('writing_score')),
+            writing_score=float(request.form.get('reading_score'))
 
-    # Preprocess and predict
-    transformed_data = preprocessor.transform(input_data)
-    prediction = model.predict(transformed_data)
+        )
+        pred_df=data.get_data_as_data_frame()
+        print(pred_df)
+        print("Before Prediction")
 
-    # Display the result
-    st.success(f"Predicted Math Score: {prediction[0]:.2f}")
+        predict_pipeline=PredictPipeline()
+        print("Mid Prediction")
+        results=predict_pipeline.predict(pred_df)
+        print("after Prediction")
+        return render_template('home.html',results=results[0])
+    
+
+
+if __name__=="__main__":
+    # app.run(host="0.0.0.0",port=8080)        
+    app.run(host='0.0.0.0', port=8080)    
